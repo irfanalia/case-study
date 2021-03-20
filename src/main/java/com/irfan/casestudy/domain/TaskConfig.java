@@ -2,7 +2,7 @@ package com.irfan.casestudy.domain;
 
 import java.util.List;
 
-public class TaskConfig {
+public class TaskConfig implements Comparable{
 
     private Task task;
     private List<String> dependentTasks;
@@ -25,6 +25,23 @@ public class TaskConfig {
 
     public String toString() {
 
-        return task.getTaskId() + ":" + getDependentTasks();
+        return task + ":" + getDependentTasks();
+    }
+
+
+    @Override
+    public int compareTo(Object o) {
+        TaskConfig taskConfigToCompare = (TaskConfig) o;
+        if(taskConfigToCompare.getDependentTasks() != null && this.getDependentTasks() != null) {
+             return Integer.valueOf(this.getDependentTasks().size())
+                     .compareTo(Integer.valueOf(taskConfigToCompare.getDependentTasks().size()));
+        }
+        if(this.getDependentTasks() == null) {
+            return -1;
+        }
+        if(taskConfigToCompare.getDependentTasks() == null) {
+            return 1;
+        }
+        return 0;
     }
 }

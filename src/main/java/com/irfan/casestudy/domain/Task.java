@@ -4,13 +4,13 @@ public class Task {
 
     private String taskId;
 
-    private float duration;
+    private int duration;
 
-    public float getDuration() {
+    public int getDuration() {
         return duration;
     }
 
-    public void setDuration(float duration) {
+    public void setDuration(int duration) {
         this.duration = duration;
     }
 
@@ -23,13 +23,13 @@ public class Task {
         this.taskId = taskId;
     }
 
-    public Task(String taskId, float duration) {
+    public Task(String taskId, int duration) {
         this.taskId = taskId;
         this.duration = duration;
     }
 
     public String toString() {
 
-        return taskId;
+        return taskId +"-"+Integer.valueOf(duration);
     }
 }
