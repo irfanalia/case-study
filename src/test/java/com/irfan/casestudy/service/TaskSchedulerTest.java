@@ -25,6 +25,21 @@ public class TaskSchedulerTest extends TestCase {
 
     }
 
+    public void testExecuteTasksWithRandomFailure() {
+
+        List<TaskConfig> taskConfigList = new ArrayList<>();
+        taskConfigList.add(createTaskConfig("T1(2):"));
+        taskConfigList.add(createTaskConfig("T2(3):"));
+        taskConfigList.add(createTaskConfig("T3(5):"));
+        taskConfigList.add(createTaskConfig("T8(3):T4"));
+        taskConfigList.add(createTaskConfig("T4(4):T1"));
+        taskConfigList.add(createTaskConfig("T7(2):T5,T6"));
+        taskConfigList.add(createTaskConfig("T6(6):T5,T3"));
+        taskConfigList.add(createTaskConfig("T5(1):T1,T2"));
+        taskScheduler.executeTasks(taskConfigList, true);
+
+    }
+
     private TaskConfig createTaskConfig(String config) {
 
         TaskConfig taskConfig = new TaskConfig();

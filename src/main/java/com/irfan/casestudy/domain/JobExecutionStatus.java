@@ -2,7 +2,7 @@ package com.irfan.casestudy.domain;
 
 public class JobExecutionStatus {
 
-    private int taskId;
+    private String taskId;
     private JobStatus status;
     private int startTime;
     private int totalWaitTime;
@@ -21,6 +21,10 @@ public class JobExecutionStatus {
 
     }
 
+    public void failJob(int time) {
+        this.startTime = time;
+        this.status = JobStatus.FAILED;    }
+
 
     public int getEndTime() {
         return endTime;
@@ -33,11 +37,11 @@ public class JobExecutionStatus {
     private int endTime;
     private int resourceId;
 
-    public int getTaskId() {
+    public String getTaskId() {
         return taskId;
     }
 
-    public void setTaskId(int taskId) {
+    public void setTaskId(String taskId) {
         this.taskId = taskId;
     }
 

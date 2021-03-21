@@ -6,6 +6,7 @@ import com.irfan.casestudy.domain.Resource;
 import com.irfan.casestudy.domain.TaskConfig;
 
 import java.util.*;
+import java.util.concurrent.ThreadLocalRandom;
 
 public class TaskScheduler {
 
@@ -14,15 +15,26 @@ public class TaskScheduler {
     Map<String, JobExecutionStatus> statusMap = new HashMap<>();
     Map<String, TaskConfig> taskConfigMap = new HashMap<>();
 
-
     public void executeTasks(List<TaskConfig> taskConfigList) {
+        executeTasks(taskConfigList,false);
+    }
+
+    public void executeTasks(List<TaskConfig> taskConfigList, boolean failJob) {
 
         List<TaskConfig> completeDependentList = createJobDependentList(taskConfigList);
         Resource[] resources = createExecutionSequence(completeDependentList);
         populateInitialStatus(resources);
 
-        executeTasksOnResources(resources, completeDependentList);
-        System.out.println(resources);
+        executeTasksOnResources(resources, completeDependentList, failJob);
+        System.out.println("Sequence");
+        System.out.println("---------------------------------------------------");
+        for(Resource resource: resources) {
+            System.out.println(resource);
+        }
+        System.out.println("---------------------------------------------------");
+        findTotalExecutionTime(resources) ;
+        System.out.println("---------------------------------------------------");
+
 
     }
 
@@ -30,6 +42,7 @@ public class TaskScheduler {
         for(Resource resource: resources) {
             for(String task: resource.getTaskListToExecute()) {
                 JobExecutionStatus jobExecutionStatus = new JobExecutionStatus();
+                jobExecutionStatus.setTaskId(task);
                 jobExecutionStatus.setStatus(JobStatus.NOT_STARTED);
                 jobExecutionStatus.setResourceId(resource.getResourceId());
                 statusMap.put(task, jobExecutionStatus);
@@ -37,7 +50,13 @@ public class TaskScheduler {
         }
     }
 
-    private void executeTasksOnResources(Resource[] resources, List<TaskConfig> completeDependentList) {
+    private void executeTasksOnResources(Resource[] resources, List<TaskConfig> completeDependentList, boolean failJob) {
+
+        String taskIdToFail = null;
+        if(failJob) {
+            int jobIndex = ThreadLocalRandom.current().nextInt(1, completeDependentList.size());
+            taskIdToFail = completeDependentList.get(jobIndex).getTask().getTaskId();
+        }
 
         boolean allJobsCompleted = false;
         int time = 0;
@@ -49,7 +68,11 @@ public class TaskScheduler {
                 }
                 String task = resources[i].getTaskListToExecute().get(jobPointer[i]);
                 JobExecutionStatus status = statusMap.get(task);
-
+               /* if(failJob && taskIdToFail.equals(task)) {
+                    status.failJob(time);
+                    resources[i].updateJobStatus(status);
+                    continue;
+                }*/
                 if(JobStatus.NOT_STARTED.equals(status.getStatus())) {
                     if(!checkIfDependentsCompleted(taskConfigMap.get(task).getDependentTasks())) {
                         continue;
@@ -58,6 +81,7 @@ public class TaskScheduler {
                 } else if(status.getStatus().equals(JobStatus.STARTED)) {
                     if((status.getStartTime() + taskConfigMap.get(task).getTask().getDuration() == time )) {
                         status.endJob(time);
+                        resources[i].updateJobStatus(status);
                         jobPointer[i] ++;
                         if(jobPointer[i] == resources[i].getTaskListToExecute().size()) {
                             continue;
@@ -75,31 +99,6 @@ public class TaskScheduler {
             time++;
 
         }
-
-        /*for(Resource resource: resources) {
-            for(String task: resource.getTaskListToExecute()) {
-                if(null == jobDependencyMap.get(task) ||
-                        jobDependencyMap.get(task).isEmpty()) {
-                    JobExecutionStatus jobExecutionStatus = new JobExecutionStatus();
-                    jobExecutionStatus.setStatus(JobStatus.COMPLETED);
-                    jobExecutionStatus.setResourceId(resource.getResourceId());
-                    jobExecutionStatus.setStartTime(0);
-                    jobExecutionStatus.setExecutionTime(taskConfigMap.get(task).getTask().getDuration());
-                    jobExecutionStatus.calculateEndTime();
-                    statusMap.put(task, jobExecutionStatus);
-                } else {
-                    for(String dependentTask:  jobDependencyMap.get(task)) {
-
-                    }
-                }
-            }
-        }*/
-    }
-
-
-
-
-    private void executeTask(String task, Resource resource) {
 
     }
 
@@ -133,23 +132,21 @@ public class TaskScheduler {
 
     }
     private Resource[] createExecutionSequence(List<TaskConfig> completeDependentList) {
+
         Resource resource[] = new Resource[NUMBER_OF_RESOURCES];
         int counter = (NUMBER_OF_RESOURCES <= completeDependentList.size())?
                 NUMBER_OF_RESOURCES: completeDependentList.size();
         allocateFirstJob(completeDependentList, resource, counter);
-        int maxTasksInAResource = completeDependentList.size() /NUMBER_OF_RESOURCES + 1 ;
+        int maxTasksInAResource = completeDependentList.size() /NUMBER_OF_RESOURCES  ;
         for(int i=counter; i<completeDependentList.size(); i++) {
 
             TaskConfig taskConfig = completeDependentList.get(i);
             allocateTaskToResource(taskConfig, resource, maxTasksInAResource);
         }
 
-        System.out.println("");
         return resource;
 
     }
-
-
 
     private void allocateFirstJob(List<TaskConfig> completeDependentList, Resource[] resource, int counter) {
 
@@ -162,7 +159,7 @@ public class TaskScheduler {
     }
 
     private void allocateTaskToResource(TaskConfig taskConfig, Resource[] resource, int maxTasksInAResource) {
-        //ThreadLocalRandom.current().nextInt(1, 10);
+
         int matchJObs = 0;
 
         Resource allocateResource = resource[0];
@@ -216,16 +213,32 @@ public class TaskScheduler {
     }
 
     private boolean checkIfDependentsCompleted(List<String> dependentTasks) {
-
-        if(null!= dependentTasks) {
-            for (String task : dependentTasks) {
-                if (!statusMap.get(task).getStatus().equals(JobStatus.COMPLETED)) {
-                    return false;
-
-                }
-
-            }
+        boolean completed = false;
+        if(null== dependentTasks) {
+            return true;
         }
-        return true;
+
+        for (String task : dependentTasks) {
+            if (statusMap.get(task).getStatus().equals(JobStatus.COMPLETED) || statusMap.get(task).getStatus().equals(JobStatus.FAILED)) {
+                completed = true;
+            } else {
+                return false;
+            }
+
+        }
+
+        return completed;
+    }
+
+    public void findTotalExecutionTime(Resource[] resources) {
+
+        List<JobExecutionStatus> statusList = new ArrayList<>();
+        statusList.addAll(statusMap.values());
+        Collections.sort(statusList, new EndTimeComparator());
+        System.out.println("Total Execution Time:" + statusList.get(0).getEndTime());
+        for(Resource resource: resources) {
+            Collections.sort(resource.getExecutionStatusList(), new EndTimeComparator());
+            System.out.println("Total Execution Time for resource"+ resource.getResourceId() +" :" + resource.getExecutionStatusList().get(0).getEndTime());
+        }
     }
 }
