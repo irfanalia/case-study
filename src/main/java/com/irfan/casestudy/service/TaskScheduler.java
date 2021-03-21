@@ -1,24 +1,107 @@
 package com.irfan.casestudy.service;
 
+import com.irfan.casestudy.domain.JobExecutionStatus;
+import com.irfan.casestudy.domain.JobStatus;
 import com.irfan.casestudy.domain.Resource;
 import com.irfan.casestudy.domain.TaskConfig;
 
 import java.util.*;
-import java.util.concurrent.ThreadLocalRandom;
 
 public class TaskScheduler {
 
     static final int NUMBER_OF_RESOURCES = 3;
     Map<String, List<String>> jobDependencyMap = new HashMap<>();
+    Map<String, JobExecutionStatus> statusMap = new HashMap<>();
+    Map<String, TaskConfig> taskConfigMap = new HashMap<>();
+
 
     public void executeTasks(List<TaskConfig> taskConfigList) {
 
         List<TaskConfig> completeDependentList = createJobDependentList(taskConfigList);
-        createExecutionSequence(completeDependentList);
+        Resource[] resources = createExecutionSequence(completeDependentList);
+        populateInitialStatus(resources);
+
+        executeTasksOnResources(resources, completeDependentList);
+        System.out.println(resources);
 
     }
 
+    private void populateInitialStatus(Resource[] resources) {
+        for(Resource resource: resources) {
+            for(String task: resource.getTaskListToExecute()) {
+                JobExecutionStatus jobExecutionStatus = new JobExecutionStatus();
+                jobExecutionStatus.setStatus(JobStatus.NOT_STARTED);
+                jobExecutionStatus.setResourceId(resource.getResourceId());
+                statusMap.put(task, jobExecutionStatus);
+            }
+        }
+    }
 
+    private void executeTasksOnResources(Resource[] resources, List<TaskConfig> completeDependentList) {
+
+        boolean allJobsCompleted = false;
+        int time = 0;
+        int [] jobPointer = new int[resources.length];
+        while(!allJobsCompleted) {
+            for(int i=0; i< resources.length;i++) {
+                if(jobPointer[i] == resources[i].getTaskListToExecute().size()) {
+                    continue;
+                }
+                String task = resources[i].getTaskListToExecute().get(jobPointer[i]);
+                JobExecutionStatus status = statusMap.get(task);
+
+                if(JobStatus.NOT_STARTED.equals(status.getStatus())) {
+                    if(!checkIfDependentsCompleted(taskConfigMap.get(task).getDependentTasks())) {
+                        continue;
+                    }
+                    status.startJob(time);
+                } else if(status.getStatus().equals(JobStatus.STARTED)) {
+                    if((status.getStartTime() + taskConfigMap.get(task).getTask().getDuration() == time )) {
+                        status.endJob(time);
+                        jobPointer[i] ++;
+                        if(jobPointer[i] == resources[i].getTaskListToExecute().size()) {
+                            continue;
+                        }
+                        String nextTask = resources[i].getTaskListToExecute().get(jobPointer[i]);
+                        if(!checkIfDependentsCompleted(taskConfigMap.get(nextTask).getDependentTasks())) {
+                            continue;
+                        }
+                        statusMap.get(nextTask).startJob(time+1);
+                    }
+                }
+            }
+
+            allJobsCompleted = checkJobStatus();
+            time++;
+
+        }
+
+        /*for(Resource resource: resources) {
+            for(String task: resource.getTaskListToExecute()) {
+                if(null == jobDependencyMap.get(task) ||
+                        jobDependencyMap.get(task).isEmpty()) {
+                    JobExecutionStatus jobExecutionStatus = new JobExecutionStatus();
+                    jobExecutionStatus.setStatus(JobStatus.COMPLETED);
+                    jobExecutionStatus.setResourceId(resource.getResourceId());
+                    jobExecutionStatus.setStartTime(0);
+                    jobExecutionStatus.setExecutionTime(taskConfigMap.get(task).getTask().getDuration());
+                    jobExecutionStatus.calculateEndTime();
+                    statusMap.put(task, jobExecutionStatus);
+                } else {
+                    for(String dependentTask:  jobDependencyMap.get(task)) {
+
+                    }
+                }
+            }
+        }*/
+    }
+
+
+
+
+    private void executeTask(String task, Resource resource) {
+
+    }
 
 
     private List<TaskConfig> createJobDependentList(List<TaskConfig> taskConfigList) {
@@ -40,21 +123,21 @@ public class TaskScheduler {
             taskConfigWithDependency.setTask(taskConfig.getTask());
             taskConfigWithDependency.setDependentTasks(allDependents);
             completeDependentTaskConfigList.add(taskConfigWithDependency);
+            taskConfigMap.put(taskConfig.getTask().getTaskId(), taskConfig);
 
 
         }
         Collections.sort(completeDependentTaskConfigList);
-        System.out.println("completeDependentTaskConfigList:"+completeDependentTaskConfigList);
         return completeDependentTaskConfigList;
 
 
     }
-    private void createExecutionSequence(List<TaskConfig> completeDependentList) {
+    private Resource[] createExecutionSequence(List<TaskConfig> completeDependentList) {
         Resource resource[] = new Resource[NUMBER_OF_RESOURCES];
         int counter = (NUMBER_OF_RESOURCES <= completeDependentList.size())?
                 NUMBER_OF_RESOURCES: completeDependentList.size();
         allocateFirstJob(completeDependentList, resource, counter);
-        int maxTasksInAResource = completeDependentList.size() /NUMBER_OF_RESOURCES +1;
+        int maxTasksInAResource = completeDependentList.size() /NUMBER_OF_RESOURCES + 1 ;
         for(int i=counter; i<completeDependentList.size(); i++) {
 
             TaskConfig taskConfig = completeDependentList.get(i);
@@ -62,6 +145,7 @@ public class TaskScheduler {
         }
 
         System.out.println("");
+        return resource;
 
     }
 
@@ -118,6 +202,30 @@ public class TaskScheduler {
         return allDependents;
     }
 
-    private void sortJobsOnNumberOfMinDependency() {
+    private boolean checkJobStatus() {
+        boolean completed = false;
+        for(Map.Entry<String, JobExecutionStatus> entry: statusMap.entrySet()) {
+            if(entry.getValue().getStatus().equals(JobStatus.COMPLETED) || entry.getValue().getStatus().equals(JobStatus.FAILED)) {
+                completed = true;
+            } else {
+                return false;
+            }
+        }
+
+        return completed;
+    }
+
+    private boolean checkIfDependentsCompleted(List<String> dependentTasks) {
+
+        if(null!= dependentTasks) {
+            for (String task : dependentTasks) {
+                if (!statusMap.get(task).getStatus().equals(JobStatus.COMPLETED)) {
+                    return false;
+
+                }
+
+            }
+        }
+        return true;
     }
 }

@@ -1,11 +1,14 @@
 package com.irfan.casestudy.domain;
 
 import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Queue;
 
 public class Resource {
    private int resourceId;
    private List<String> taskListToExecute = new ArrayList<>();
+
 
 
     public int getResourceId() {
