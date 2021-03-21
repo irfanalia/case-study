@@ -58,7 +58,9 @@ public class Resource {
     public String toString() {
 
         StringBuffer sb = new StringBuffer(resourceId);
+        sb.append("Resource ").append(resourceId).append(" ==> ");
         for(JobExecutionStatus status: executionStatusList) {
+
             sb.append(status.getTaskId());
             sb.append(":");
             sb.append(status.getStartTime());

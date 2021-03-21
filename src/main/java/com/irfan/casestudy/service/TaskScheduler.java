@@ -202,7 +202,8 @@ public class TaskScheduler {
     private boolean checkJobStatus() {
         boolean completed = false;
         for(Map.Entry<String, JobExecutionStatus> entry: statusMap.entrySet()) {
-            if(entry.getValue().getStatus().equals(JobStatus.COMPLETED) || entry.getValue().getStatus().equals(JobStatus.FAILED)) {
+            if(entry.getValue().getStatus().equals(JobStatus.COMPLETED) ||
+                    entry.getValue().getStatus().equals(JobStatus.FAILED)) {
                 completed = true;
             } else {
                 return false;
@@ -219,7 +220,8 @@ public class TaskScheduler {
         }
 
         for (String task : dependentTasks) {
-            if (statusMap.get(task).getStatus().equals(JobStatus.COMPLETED) || statusMap.get(task).getStatus().equals(JobStatus.FAILED)) {
+            if (statusMap.get(task).getStatus().equals(JobStatus.COMPLETED) ||
+                    statusMap.get(task).getStatus().equals(JobStatus.FAILED)) {
                 completed = true;
             } else {
                 return false;
@@ -238,7 +240,8 @@ public class TaskScheduler {
         System.out.println("Total Execution Time:" + statusList.get(0).getEndTime());
         for(Resource resource: resources) {
             Collections.sort(resource.getExecutionStatusList(), new EndTimeComparator());
-            System.out.println("Total Execution Time for resource"+ resource.getResourceId() +" :" + resource.getExecutionStatusList().get(0).getEndTime());
+            System.out.println("Total Execution Time for resource"+ resource.getResourceId() +" :"
+                    + resource.getExecutionStatusList().get(0).getEndTime());
         }
     }
 }

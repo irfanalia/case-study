@@ -50,7 +50,6 @@ public class TaskSchedulerTest extends TestCase {
             taskConfig.setDependentTasks(Arrays.asList(configArray[1].split(",")));
         }
         return taskConfig;
-                //Arrays.asList(configArray[1].split(","))));
 
     }
 }
